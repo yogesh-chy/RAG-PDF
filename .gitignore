@@ -1,0 +1,16 @@
+# Root .gitignore for RAG PDF Project
+
+# Ignored subfolders
+backend/venv/
+backend/.env
+backend/lancedb_data/
+backend/chroma_db/
+backend/__pycache__/
+
+frontend/.next/
+frontend/node_modules/
+frontend/.env*
+
+# OS files
+.DS_Store
+Thumbs.db
