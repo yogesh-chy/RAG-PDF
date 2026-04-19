@@ -1,6 +1,6 @@
 # 🤖 RAG PDF Chatbot
 
-A production-ready Retrieval-Augmented Generation (RAG) system that allows users to upload PDF documents and chat with them using AI. Powered by **Google Gemini**, **FastAPI**, and **LanceDB**.
+A production-ready Retrieval-Augmented Generation (RAG) system that allows users to upload PDF documents and chat with them using AI. Powered by **Google Gemini**, **Groq**, **FastAPI**, and **LanceDB**.
 
 ---
 
@@ -8,7 +8,7 @@ A production-ready Retrieval-Augmented Generation (RAG) system that allows users
 
 - **PDF Ingestion**: Extract and chunk text from PDFs with page reference tracking.
 - **RAG Pipeline**: Semantic search using LanceDB for high-performance vector retrieval.
-- **AI Chat**: Conversational memory and streaming answers powered by Gemini 2.0 Flash.
+- **AI Chat**: Conversational memory and near-instant streaming answers powered by **Groq (Llama 3)**.
 - **User Auth**: Secure JWT-based authentication and document ownership.
 - **Clean UI**: Modern frontend built with Next.js (Work in progress).
 
@@ -20,7 +20,9 @@ A production-ready Retrieval-Augmented Generation (RAG) system that allows users
 - **Framework**: [FastAPI](https://fastapi.tiangolo.com/)
 - **Vector DB**: [LanceDB](https://lancedb.com/) (Embedded, No-overhead vector storage)
 - **Metadata DB**: [PostgreSQL](https://www.postgresql.org/) (User accounts & Chat history)
-- **AI Models**: Google Gemini (`text-embedding-004` & `gemini-2.0-flash`)
+- **AI Models**: 
+  - **Embeddings**: Google Gemini (`models/gemini-embedding-001`)
+  - **Chat Generation**: [Groq](https://groq.com/) (`llama-3.3-70b-versatile`)
 - **Parsing**: [PyMuPDF](https://pymupdf.readthedocs.io/)
 
 ### Frontend
@@ -53,6 +55,7 @@ Create a `.env` file in the `backend` folder:
 ```env
 DATABASE_URL=postgresql+psycopg://user:pass@localhost:5432/ragpdf
 GOOGLE_API_KEY=your_gemini_api_key
+GROQ_API_KEY=your_groq_api_key
 SECRET_KEY=your_jwt_secret
 ```
 

@@ -11,17 +11,23 @@ Handles all AI operations:
 from typing import List, Tuple, Generator
 import fitz  # PyMuPDF
 import google.generativeai as genai
+from groq import Groq
 
 from config import (
     GOOGLE_API_KEY,
+    GROQ_API_KEY,
     EMBEDDING_MODEL,
     CHAT_MODEL,
+    GROQ_MODEL,
     CHUNK_SIZE,
     CHUNK_OVERLAP,
 )
 
 # Configure Gemini once at module load
 genai.configure(api_key=GOOGLE_API_KEY)
+
+# Configure Groq once at module load
+groq_client = Groq(api_key=GROQ_API_KEY)
 
 
 # ─── PDF Parsing ──────────────────────────────────────────────────────────────
@@ -137,3 +143,33 @@ Answer:"""
     for chunk in response:
         if chunk.text:
             yield chunk.text
+
+
+def stream_groq_answer(context: str, question: str) -> Generator[str, None, None]:
+    """
+    Sync generator that streams the Groq answer token by token.
+    Used inside a FastAPI StreamingResponse.
+    """
+    prompt = f"""{SYSTEM_PROMPT}
+
+--- Document Context ---
+{context}
+--- End Context ---
+
+Question: {question}
+
+Answer:"""
+
+    completion = groq_client.chat.completions.create(
+        model=GROQ_MODEL,
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+        stream=True,
+    )
+
+    for chunk in completion:
+        token = chunk.choices[0].delta.content
+        if token:
+            yield token
+

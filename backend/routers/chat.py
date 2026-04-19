@@ -10,7 +10,7 @@ import models
 import schemas
 from database import get_db, SessionLocal
 from security import get_current_user
-from embeddings import get_query_embedding, stream_gemini_answer
+from embeddings import get_query_embedding, stream_groq_answer
 from config import TOP_K_CHUNKS
 import lancedb
 
@@ -121,7 +121,7 @@ def ask_question(
         full_response = ""
 
         try:
-            for token in stream_gemini_answer(context, request.question):
+            for token in stream_groq_answer(context, request.question):
                 full_response += token
                 yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
 

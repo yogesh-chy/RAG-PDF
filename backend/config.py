@@ -9,18 +9,20 @@ DATABASE_URL: str = os.getenv(
 if DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
 GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
+GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
 SECRET_KEY: str = os.getenv("SECRET_KEY", "change-this-secret-key")
 ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
     os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
 )
 
-# Embedding config — text-embedding-004 produces 768-dim vectors
-EMBEDDING_MODEL = "models/text-embedding-004"
+# Embedding config
+EMBEDDING_MODEL = "models/gemini-embedding-001"
 EMBEDDING_DIMENSIONS = 768
 
-# Chat model
-CHAT_MODEL = "gemini-2.0-flash"
+# Chat models
+CHAT_MODEL = "models/gemini-flash-latest"
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 # Chunking strategy
 CHUNK_SIZE = 500       # words per chunk
