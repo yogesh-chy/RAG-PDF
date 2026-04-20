@@ -119,9 +119,28 @@ def ask_question(
     # ── 7. Stream response ────────────────────────────────────────────────
     def generate():
         full_response = ""
+        
+        # Fetch session history for conversational memory
+        history = []
+        try:
+            h_db = SessionLocal()
+            past_messages = (
+                h_db.query(models.ChatMessage)
+                .filter(models.ChatMessage.session_id == session.id)
+                .order_by(models.ChatMessage.created_at.desc())
+                .offset(1) # Skip the user message we just added
+                .limit(10) # Last 10 messages for context
+                .all()
+            )
+            # Reverse to get chronological order
+            for msg in reversed(past_messages):
+                history.append({"role": msg.role, "content": msg.content})
+            h_db.close()
+        except Exception as e:
+            print(f"[Warning] Failed to fetch chat history: {e}")
 
         try:
-            for token in stream_groq_answer(context, request.question):
+            for token in stream_groq_answer(context, request.question, history=history):
                 full_response += token
                 yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
 
@@ -201,3 +220,24 @@ def get_history(
         .order_by(models.ChatMessage.created_at.asc())
         .all()
     )
+
+
+@router.get("/doc-history/{doc_id}", response_model=List[schemas.ChatMessageResponse])
+def get_doc_history(
+    doc_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return all chat messages associated with a document (across all its sessions)."""
+    # Join ChatMessage with ChatSession to filter by doc_id
+    messages = (
+        db.query(models.ChatMessage)
+        .join(models.ChatSession)
+        .filter(
+            models.ChatSession.doc_id == doc_id,
+            models.ChatSession.user_id == current_user.id
+        )
+        .order_by(models.ChatMessage.created_at.asc())
+        .all()
+    )
+    return messages

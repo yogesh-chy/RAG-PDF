@@ -122,49 +122,46 @@ Rules:
 5. Format your response with clear paragraphs when the answer is long."""
 
 
-def stream_gemini_answer(context: str, question: str) -> Generator[str, None, None]:
+def stream_gemini_answer(context: str, question: str, history: List[dict] = None) -> Generator[str, None, None]:
     """
     Sync generator that streams the Gemini answer token by token.
     Used inside a FastAPI StreamingResponse.
     """
-    prompt = f"""{SYSTEM_PROMPT}
+    # Build history for Gemini (different format than Groq)
+    gemini_history = []
+    if history:
+        for msg in history:
+            role = "user" if msg["role"] == "user" else "model"
+            gemini_history.append({"role": role, "parts": [msg["content"]]})
 
---- Document Context ---
-{context}
---- End Context ---
-
-Question: {question}
-
-Answer:"""
-
-    model = genai.GenerativeModel(CHAT_MODEL)
-    response = model.generate_content(prompt, stream=True)
+    model = genai.GenerativeModel(
+        model_name=CHAT_MODEL,
+        system_instruction=f"{SYSTEM_PROMPT}\n\n--- Document Context ---\n{context}\n--- End Context ---"
+    )
+    
+    chat = model.start_chat(history=gemini_history)
+    response = chat.send_message(question, stream=True)
 
     for chunk in response:
         if chunk.text:
             yield chunk.text
 
 
-def stream_groq_answer(context: str, question: str) -> Generator[str, None, None]:
+def stream_groq_answer(context: str, question: str, history: List[dict] = None) -> Generator[str, None, None]:
     """
     Sync generator that streams the Groq answer token by token.
     Used inside a FastAPI StreamingResponse.
     """
-    prompt = f"""{SYSTEM_PROMPT}
-
---- Document Context ---
-{context}
---- End Context ---
-
-Question: {question}
-
-Answer:"""
+    system_msg = f"{SYSTEM_PROMPT}\n\n--- Document Context ---\n{context}\n--- End Context ---"
+    
+    messages = [{"role": "system", "content": system_msg}]
+    if history:
+        messages.extend(history)
+    messages.append({"role": "user", "content": question})
 
     completion = groq_client.chat.completions.create(
         model=GROQ_MODEL,
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
+        messages=messages,
         stream=True,
     )
 

@@ -135,6 +135,8 @@ venv.bak/
 # Vector Databases
 lancedb_data/
 chroma_db/
+*.db
+*.sqlite
 
 
 # Spyder project settings

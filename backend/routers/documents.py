@@ -93,6 +93,10 @@ async def upload_document(
     pdf_bytes = await file.read()
     if len(pdf_bytes) == 0:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    
+    MAX_SIZE = 15 * 1024 * 1024  # 15 MB
+    if len(pdf_bytes) > MAX_SIZE:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 15MB.")
 
     # Create document record (status = processing)
     doc = models.Document(

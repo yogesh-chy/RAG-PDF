@@ -30,6 +30,15 @@ class UserResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
 # ─── Documents ───────────────────────────────────────────────────────────────
 
 class DocumentResponse(BaseModel):
@@ -59,6 +68,7 @@ class SourceChunk(BaseModel):
 
 class ChatMessageResponse(BaseModel):
     id: int
+    session_id: int
     role: str
     content: str
     source_chunks: Optional[Any] = None
