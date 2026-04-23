@@ -55,7 +55,7 @@ class ChatSession(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    doc_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    doc_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=True)
     # Auto-generated from the first question (first 60 chars)
     title = Column(Text)
     created_at = Column(DateTime, server_default=func.now())

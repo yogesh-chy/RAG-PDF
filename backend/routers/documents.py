@@ -94,9 +94,9 @@ async def upload_document(
     if len(pdf_bytes) == 0:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
     
-    MAX_SIZE = 15 * 1024 * 1024  # 15 MB
+    MAX_SIZE = 100 * 1024 * 1024
     if len(pdf_bytes) > MAX_SIZE:
-        raise HTTPException(status_code=400, detail="File too large. Maximum size is 15MB.")
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 100MB.")
 
     # Create document record (status = processing)
     doc = models.Document(
@@ -113,6 +113,22 @@ async def upload_document(
     background_tasks.add_task(_process_pdf, doc.id, pdf_bytes)
 
     return doc
+
+
+@router.post("/extract")
+async def extract_document_text(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Extract text from a PDF and return it as a string. Used for humanization."""
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+
+    pdf_bytes = await file.read()
+    pages, _ = extract_pages(pdf_bytes)
+    
+    full_text = "\n\n".join(text for _, text in pages)
+    return {"text": full_text}
 
 
 @router.get("/", response_model=List[schemas.DocumentResponse])

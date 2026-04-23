@@ -2,21 +2,52 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getToken, removeToken, isAuthenticated as checkAuth } from "@/lib/auth";
+import { getToken, removeToken, isAuthenticated as checkAuth, getAuthHeader } from "@/lib/auth";
+import { getApiUrl } from "@/lib/api";
+
+interface UserInfo {
+  id: number;
+  email: string;
+  username: string;
+}
 
 export function useAuth(requireAuth: boolean = true) {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const check = () => {
+    const check = async () => {
       const isAuth = checkAuth();
       if (requireAuth && !isAuth) {
         router.push("/login");
+        setLoading(false);
+        return;
       } else if (!requireAuth && isAuth) {
         router.push("/dashboard");
+        setLoading(false);
+        return;
       }
+
+      // Fetch user info if authenticated
+      if (isAuth) {
+        try {
+          const res = await fetch(getApiUrl("/auth/me"), {
+            headers: getAuthHeader(),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setUser(data);
+          } else if (res.status === 401) {
+            // Token is invalid/expired
+            removeToken();
+            router.push("/login");
+          }
+        } catch (err) {
+          console.error("Failed to fetch user info", err);
+        }
+      }
+
       setLoading(false);
     };
 
@@ -28,5 +59,5 @@ export function useAuth(requireAuth: boolean = true) {
     router.push("/login");
   };
 
-  return { loading, logout };
+  return { user, loading, logout };
 }

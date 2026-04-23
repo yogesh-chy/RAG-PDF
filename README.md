@@ -1,16 +1,17 @@
-# 🤖 RAG PDF Chatbot
+# ⚡ NexusAI
 
-A production-ready Retrieval-Augmented Generation (RAG) system that allows users to upload PDF documents and chat with them using AI. Powered by **Google Gemini**, **Groq**, **FastAPI**, and **LanceDB**.
+An all-in-one AI productivity suite — chat with PDF documents using advanced RAG, humanize AI-generated text, and more. Powered by **Google Gemini**, **Groq**, **FastAPI**, and **LanceDB**.
 
 ---
 
 ## 🌟 Features
 
-- **PDF Ingestion**: Extract and chunk text from PDFs with page reference tracking.
+- **Chat with PDFs**: Upload documents and ask questions — powered by semantic vector search via LanceDB.
+- **AI Text Humanizer**: Rewrite AI-generated text to sound natural and bypass detection.
 - **RAG Pipeline**: Semantic search using LanceDB for high-performance vector retrieval.
 - **AI Chat**: Conversational memory and near-instant streaming answers powered by **Groq (Llama 3)**.
 - **User Auth**: Secure JWT-based authentication and document ownership.
-- **Clean UI**: Modern frontend built with Next.js (Work in progress).
+- **Premium UI**: Modern, dark-themed frontend built with Next.js.
 
 ---
 

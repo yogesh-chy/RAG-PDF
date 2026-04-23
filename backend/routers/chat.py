@@ -1,7 +1,7 @@
 import json
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -10,8 +10,10 @@ import models
 import schemas
 from database import get_db, SessionLocal
 from security import get_current_user
-from embeddings import get_query_embedding, stream_groq_answer
+from embeddings import get_query_embedding, stream_groq_answer, stream_humanize_answer
 from config import TOP_K_CHUNKS
+import re
+import statistics
 import lancedb
 
 db_lancedb = lancedb.connect("./lancedb_data")
@@ -180,6 +182,155 @@ def ask_question(
     )
 
 
+def calculate_human_score(text: str) -> int:
+    """
+    Brutally honest human score calculation. 
+    Prioritizes showing low scores for robotic text.
+    """
+    sentences = [s.strip() for s in re.split(r'[.!?]+', text) if s.strip()]
+    if not sentences:
+        return 10
+    
+    # 1. Burstiness (Human Signal)
+    lengths = [len(s.split()) for s in sentences]
+    if len(lengths) < 3: # Too short to judge = likely AI
+        variance = 0
+    else:
+        variance = statistics.variance(lengths)
+    
+    # 2. AI Marker Detection (Heavier Penalties)
+    ai_markers = [
+        'moreover', 'furthermore', 'additionally', 'in conclusion', 
+        'consequently', 'therefore', 'notably', 'pivotal', 'delve',
+        'testament', 'comprehensive', 'unlock', 'harness', 'robust'
+    ]
+    marker_count = sum(1 for word in ai_markers if word in text.lower())
+    
+    # 3. Base Score + Calculations
+    # AI models usually have variance under 20. 
+    burstiness_score = min(40, (variance ** 0.5) * 5)
+    
+    base_score = 15 # Start very low
+    score = int(base_score + burstiness_score - (marker_count * 15))
+    
+    # Final capping
+    score = min(99, max(1, score))
+    return score
+
+
+@router.post("/humanize")
+def humanize_text(
+    request: schemas.HumanizeRequest,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Humanize AI-generated text:
+      1. Get/create chat session (no doc_id)
+      2. Save user text
+      3. Stream humanized answer
+      4. Save assistant message
+    """
+    # ── 1. Get or create session ──────────────────────────────────────────
+    if request.session_id:
+        session = db.query(models.ChatSession).filter(
+            models.ChatSession.id == request.session_id,
+            models.ChatSession.user_id == current_user.id,
+        ).first()
+        if not session:
+            raise HTTPException(status_code=404, detail="Chat session not found")
+    else:
+        session = models.ChatSession(
+            user_id=current_user.id,
+            doc_id=None,
+            title=request.text[:60],
+        )
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+
+    # ── 2. Save user message ──────────────────────────────────────────────
+    user_msg = models.ChatMessage(
+        session_id=session.id,
+        role="user",
+        content=request.text,
+    )
+    db.add(user_msg)
+    db.commit()
+
+    session_id = session.id
+
+    # ── 3. Stream response ────────────────────────────────────────────────
+    def generate():
+        full_response = ""
+        
+        # Fetch session history for conversational memory
+        history = []
+        try:
+            h_db = SessionLocal()
+            past_messages = (
+                h_db.query(models.ChatMessage)
+                .filter(models.ChatMessage.session_id == session_id)
+                .order_by(models.ChatMessage.created_at.desc())
+                .offset(1) # Skip the text we just added
+                .limit(10) # Last 10 messages for context
+                .all()
+            )
+            for msg in reversed(past_messages):
+                history.append({"role": msg.role, "content": msg.content})
+            h_db.close()
+        except Exception as e:
+            print(f"[Warning] Failed to fetch chat history: {e}")
+
+        try:
+            for token in stream_humanize_answer(
+                request.text, 
+                history=history,
+                tone=request.tone,
+                intensity=request.intensity
+            ):
+                full_response += token
+                yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
+
+            # Send session ID
+            yield f"data: {json.dumps({'type': 'session', 'session_id': session_id})}\n\n"
+
+            # Calculate and send score
+            human_score = calculate_human_score(full_response)
+            ai_score = 100 - human_score
+            score_data = {"human_score": human_score, "ai_score": ai_score}
+            yield f"data: {json.dumps({'type': 'score', 'data': score_data})}\n\n"
+
+            # Persist assistant message with score in source_chunks
+            save_db = SessionLocal()
+            try:
+                asst_msg = models.ChatMessage(
+                    session_id=session_id,
+                    role="assistant",
+                    content=full_response,
+                    source_chunks=[score_data], # Store score here
+                )
+                save_db.add(asst_msg)
+                save_db.commit()
+            finally:
+                save_db.close()
+
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+        except Exception as exc:
+            yield f"data: {json.dumps({'type': 'error', 'content': str(exc)})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
 # ─── Session & History Endpoints ──────────────────────────────────────────────
 
 @router.get("/sessions/{doc_id}", response_model=List[schemas.ChatSessionResponse])
@@ -241,3 +392,35 @@ def get_doc_history(
         .all()
     )
     return messages
+
+
+@router.get("/humanize-history", response_model=List[schemas.ChatMessageResponse])
+def get_humanize_history(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return all chat messages associated with the AI humanizer (doc_id is null)."""
+    messages = (
+        db.query(models.ChatMessage)
+        .join(models.ChatSession)
+        .filter(
+            models.ChatSession.doc_id.is_(None),
+            models.ChatSession.user_id == current_user.id
+        )
+        .order_by(models.ChatMessage.created_at.asc())
+        .all()
+    )
+    return messages
+
+
+@router.delete("/humanize-history", status_code=status.HTTP_204_NO_CONTENT)
+def delete_humanize_history(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete all humanize chat history (sessions where doc_id is None)."""
+    db.query(models.ChatSession).filter(
+        models.ChatSession.user_id == current_user.id,
+        models.ChatSession.doc_id.is_(None)
+    ).delete(synchronize_session=False)
+    db.commit()

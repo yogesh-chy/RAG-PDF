@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { getApiUrl } from "@/lib/api";
 
 interface SignupFormProps {
   onSuccess?: () => void;
@@ -27,7 +28,7 @@ export default function SignupForm({
     setError("");
 
     try {
-      const res = await fetch("http://localhost:8000/auth/register", {
+      const res = await fetch(getApiUrl("/auth/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, username, password }),

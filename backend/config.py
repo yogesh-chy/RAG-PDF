@@ -16,6 +16,16 @@ ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
     os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
 )
 
+# CORS
+ALLOWED_ORIGINS: list = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+
+# SMTP Config
+SMTP_HOST: str = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+SMTP_PORT: int = int(os.getenv("EMAIL_PORT", "587"))
+SMTP_USER: str = os.getenv("EMAIL_HOST_USER", "")
+SMTP_PASS: str = os.getenv("EMAIL_HOST_PASSWORD", "")
+SMTP_FROM: str = os.getenv("DEFAULT_FROM_EMAIL", "NexusAI <noreply@nexusai.com>")
+
 # Embedding config
 EMBEDDING_MODEL = "models/gemini-embedding-001"
 EMBEDDING_DIMENSIONS = 768

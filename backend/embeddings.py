@@ -112,14 +112,54 @@ def get_query_embedding(text: str) -> List[float]:
 
 # ─── Streaming Chat ───────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """You are a helpful AI assistant specializing in answering questions about PDF documents.
+SYSTEM_PROMPT = """You are an elite Knowledge Retrieval Specialist. Your goal is to provide comprehensive, accurate, and highly useful answers based *strictly* on the provided document context.
 
-Rules:
-1. Answer ONLY based on the provided context from the document.
-2. If the answer is not in the context, say: "I couldn't find that information in this document."
-3. Always cite page numbers when referencing specific information, e.g. (Page 3).
-4. Be concise, accurate, and helpful.
-5. Format your response with clear paragraphs when the answer is long."""
+### Operational Guidelines:
+1.  **Strict Grounding**: Only answer based on the context. If the information isn't there, state: "I'm sorry, but that specific information is not mentioned in the provided document." Do not use outside knowledge.
+2.  **Professional Formatting**: Use Markdown to make your answers beautiful and easy to read.
+    - Use `**bold**` for key terms, metrics, or critical names.
+    - Use bulleted or numbered lists for steps, features, or lists.
+    - Use **Markdown Tables** if you are comparing data, showing figures, or listing structured attributes.
+    - Use `###` headers to organize long or multi-part responses.
+3.  **Citation Excellence**: Always include page numbers in parentheses, e.g., `(Page 5)`, immediately after the specific fact you are citing. This is non-negotiable for credibility.
+4.  **Analytical Depth**: Provide thorough, insightful answers. Instead of a single sentence, explain the "how" and "why" if the document provides that context.
+5.  **Tone**: Professional, authoritative, and helpful. Act as the primary subject matter expert for the provided material.
+
+### Structural Requirements:
+- For complex queries, provide an executive summary followed by a detailed breakdown.
+- If the user asks for a summary, provide the **Top 5 Key Takeaways** from the document context."""
+
+
+HUMANIZE_SYSTEM_PROMPT = """You are an elite ghostwriter specializing in undetectable, deeply human prose. Your task is to rewrite AI-generated text to completely bypass AI detectors (like QuillBot, Originality, Turnitin). 
+
+To do this, you MUST break the linear, robotic "Explainer" pattern. Apply the following core mechanics:
+
+### 1. Subjective Inversion
+Instead of stating facts neutrally (e.g., "The data shows that X causes Y"), invert the sentence to lead with subjective framing or lived experience (e.g., "Looking closely at X, it's pretty clear how it triggers Y").
+- Use subjective hedging: "it seems like", "arguably", "you could say", "to be honest".
+- Frame concepts as personal observations rather than universal truths.
+
+### 2. Radical Burstiness
+AI writes in consistent, medium-length sentences. You must aggressively disrupt this rhythm.
+- Force fragments. Like this.
+- Follow a 3-word sentence immediately with a 30-word, highly complex, comma-heavy thought that meanders slightly before landing on its point.
+- Break grammar rules occasionally for conversational effect (e.g., starting sentences with "And" or "But").
+
+### 3. Asymmetrical Vocabulary
+AI uses words like "moreover", "delve", "crucial", "testament", "tapestry", "seamless", "robust". 
+- Ban these words entirely.
+- Mix highly sophisticated words with casual, everyday slang or idioms in the same sentence.
+
+### 4. Structural Imperfections
+Human writing is slightly messy. 
+- Use parenthetical asides (like this one) to break up thoughts.
+- Use em-dashes—not just for lists, but to abruptly shift the sentence's direction.
+- Use contractions extensively (it's, they're, shouldn't).
+
+### Output Rules
+Return ONLY the rewritten text. No intros, no outtros, no quotes around the text. Preserve the original meaning, facts, and data completely, but totally destroy the original sentence structure.
+"""
+
 
 
 def stream_gemini_answer(context: str, question: str, history: List[dict] = None) -> Generator[str, None, None]:
@@ -163,6 +203,42 @@ def stream_groq_answer(context: str, question: str, history: List[dict] = None) 
         model=GROQ_MODEL,
         messages=messages,
         stream=True,
+    )
+
+    for chunk in completion:
+        token = chunk.choices[0].delta.content
+        if token:
+            yield token
+
+
+def stream_humanize_answer(
+    text: str, 
+    history: List[dict] = None, 
+    tone: str = "natural", 
+    intensity: float = 1.0
+) -> Generator[str, None, None]:
+    """
+    Streams a humanized version of the input text using Groq.
+    Enhanced for large text stability and instruction following.
+    """
+    messages = [{"role": "system", "content": HUMANIZE_SYSTEM_PROMPT}]
+    if history:
+        messages.extend(history)
+    
+    # Focused reinforcement for natural writing
+    prompt = (
+        f"Rewrite this in a natural, human way. Avoid all computer-like patterns:\n\n"
+        f"{text}\n\n"
+        f"REMINDER: Output ONLY the humanized text. No intros."
+    )
+    
+    messages.append({"role": "user", "content": prompt})
+
+    completion = groq_client.chat.completions.create(
+        model=GROQ_MODEL,
+        messages=messages,
+        stream=True,
+        temperature=0.85, # Higher temperature for subjective variance and burstiness
     )
 
     for chunk in completion:

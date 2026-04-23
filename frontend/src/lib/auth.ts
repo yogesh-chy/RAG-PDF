@@ -15,7 +15,24 @@ export const removeToken = () => {
 };
 
 export const isAuthenticated = () => {
-  return !!getToken();
+  const token = getToken();
+  if (!token) return false;
+
+  try {
+    const payloadBase64 = token.split(".")[1];
+    const base64 = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
+    const decodedJson = atob(base64);
+    const decoded = JSON.parse(decodedJson);
+    
+    // exp is in seconds, Date.now() is in milliseconds
+    if (decoded.exp && Date.now() >= decoded.exp * 1000) {
+      removeToken(); // clean up expired token
+      return false;
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
 };
 
 export const getAuthHeader = () => {

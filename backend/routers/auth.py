@@ -8,6 +8,7 @@ from database import get_db
 from security import hash_password, verify_password, create_access_token, get_current_user
 from config import ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
 from jose import jwt, JWTError
+from email_utils import send_password_reset_email
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -73,11 +74,20 @@ def forgot_password(payload: schemas.ForgotPasswordRequest, db: Session = Depend
         expires_delta=timedelta(minutes=15)
     )
 
-    # In development, we return the link directly
+    # Create the reset link
     reset_link = f"http://localhost:3000/reset-password?token={reset_token}"
+
+    # Send the actual email
+    success = send_password_reset_email(user.email, reset_link)
+    
+    if not success:
+        return {
+            "message": "Password reset link generated, but email failed to send.",
+            "debug_link": reset_link if not success else None # Keep debug link if email fails for testing
+        }
+
     return {
-        "message": "Password reset link sent.",
-        "debug_link": reset_link  # Only for development
+        "message": "Password reset link sent to your email.",
     }
 
 

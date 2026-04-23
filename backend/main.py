@@ -5,15 +5,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, Base
-import models  # noqa: F401 — ensures all models are registered before create_all
+import models  # noqa: F401
 from routers import auth, documents, chat
+from config import ALLOWED_ORIGINS
 
 # ── Create all DB tables on startup (safe: skips existing tables) ────────────
 Base.metadata.create_all(bind=engine)
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 app = FastAPI(
-    title="RAG PDF Chatbot API",
+    title="NexusAI API",
     description="Upload PDFs and chat with them using AI — powered by Google Gemini, Groq, and LanceDB",
     version="1.1.0",
     docs_url="/docs",
@@ -23,7 +24,7 @@ app = FastAPI(
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,7 +39,7 @@ app.include_router(chat.router)
 # ── Health check ──────────────────────────────────────────────────────────────
 @app.get("/", tags=["Health"])
 def root():
-    return {"message": "RAG PDF Chatbot API", "status": "running", "docs": "/docs"}
+    return {"message": "NexusAI API", "status": "running", "docs": "/docs"}
 
 
 @app.get("/health", tags=["Health"])

@@ -60,6 +60,13 @@ class AskRequest(BaseModel):
     session_id: Optional[int] = None
 
 
+class HumanizeRequest(BaseModel):
+    text: str
+    session_id: Optional[int] = None
+    tone: Optional[str] = "natural" # natural, professional, academic, conversational
+    intensity: Optional[float] = 1.0 # 0.1 to 1.0
+
+
 class SourceChunk(BaseModel):
     chunk_id: int
     page_number: int
