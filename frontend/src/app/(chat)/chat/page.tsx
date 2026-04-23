@@ -11,6 +11,7 @@ export default function ChatUploadPage() {
   const { loading: authLoading } = useAuth(true);
   
   const [uploading, setUploading] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
 
@@ -42,7 +43,13 @@ export default function ChatUploadPage() {
       if (!res.ok) throw new Error("Upload failed");
       
       const data = await res.json();
-      router.push(`/chat/${data.id}`);
+      setSuccess(true);
+      setUploading(false);
+      
+      // Short delay to show success before redirect
+      setTimeout(() => {
+        router.push(`/chat/${data.id}`);
+      }, 1000);
     } catch (err: any) {
       setError(err.message || "Something went wrong during upload.");
       setUploading(false);
@@ -98,9 +105,15 @@ export default function ChatUploadPage() {
         />
         
         <div className="flex flex-col items-center gap-4 relative z-0">
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${uploading ? 'bg-transparent' : 'bg-primary/20 text-primary'}`}>
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${uploading || success ? 'bg-transparent' : 'bg-primary/20 text-primary'}`}>
             {uploading ? (
               <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin shadow-lg" />
+            ) : success ? (
+              <div className="w-10 h-10 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
             ) : (
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -110,7 +123,7 @@ export default function ChatUploadPage() {
           
           <div>
             <p className="text-xl font-bold mb-2 text-foreground">
-              {uploading ? "Uploading & Analyzing..." : "Upload a PDF to begin"}
+              {uploading ? "Uploading & Analyzing..." : success ? "Upload Successful!" : "Upload a PDF to begin"}
             </p>
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto leading-relaxed">
               {uploading ? "This may take a moment depending on file size." : "Securely embed a document into your knowledge base. Our AI will analyze the contents instantly, allowing you to extract insights, summarize data, and chat with your document."}

@@ -19,6 +19,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const { loading: authLoading } = useAuth(true);
   const pathname = usePathname();
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [notification, setNotification] = useState("");
 
   const fetchDocuments = useCallback(async () => {
     try {
@@ -44,6 +45,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       });
       if (res.ok) {
         setDocuments((prev) => prev.filter((d) => d.id !== docId));
+        setNotification("Document deleted successfully");
+        setTimeout(() => setNotification(""), 3000);
         if (pathname === `/chat/${docId}`) {
           window.location.href = "/chat";
         }
@@ -140,6 +143,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-background relative z-0">
+        {notification && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-green-500 text-xs font-bold shadow-lg shadow-green-500/10 animate-in fade-in slide-in-from-top-2 duration-300">
+            {notification}
+          </div>
+        )}
         {children}
       </div>
     </div>
