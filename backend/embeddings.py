@@ -12,6 +12,8 @@ from typing import List, Tuple, Generator
 import fitz  # PyMuPDF
 import google.generativeai as genai
 from groq import Groq
+import docx
+import io
 
 from config import (
     GOOGLE_API_KEY,
@@ -47,6 +49,20 @@ def extract_pages(pdf_bytes: bytes) -> Tuple[List[Tuple[int, str]], int]:
         if text:
             pages.append((page_num, text))
     return pages, len(doc)
+
+
+# ─── Word Parsing ─────────────────────────────────────────────────────────────
+
+def extract_docx(docx_bytes: bytes) -> str:
+    """
+    Extract all text from a .docx file.
+    """
+    doc = docx.Document(io.BytesIO(docx_bytes))
+    full_text = []
+    for para in doc.paragraphs:
+        if para.text.strip():
+            full_text.append(para.text)
+    return "\n\n".join(full_text)
 
 
 # ─── Chunking ─────────────────────────────────────────────────────────────────
@@ -130,34 +146,37 @@ SYSTEM_PROMPT = """You are an elite Knowledge Retrieval Specialist. Your goal is
 - If the user asks for a summary, provide the **Top 5 Key Takeaways** from the document context."""
 
 
-HUMANIZE_SYSTEM_PROMPT = """You are an elite ghostwriter specializing in undetectable, deeply human prose. Your task is to rewrite AI-generated text to completely bypass AI detectors (like QuillBot, Originality, Turnitin). 
+HUMANIZE_SYSTEM_PROMPT = """You are a master of "Subjective Prose"—a style of writing that is statistically indistinguishable from a highly educated, slightly opinionated human. Your goal is to rewrite the provided text to bypass elite AI detectors (GPTZero, Turnitin, Originality.ai) by maximizing Perplexity and Burstiness.
 
-To do this, you MUST break the linear, robotic "Explainer" pattern. Apply the following core mechanics:
+### CORE MECHANICS (The "Human Fingerprint"):
 
-### 1. Subjective Inversion
-Instead of stating facts neutrally (e.g., "The data shows that X causes Y"), invert the sentence to lead with subjective framing or lived experience (e.g., "Looking closely at X, it's pretty clear how it triggers Y").
-- Use subjective hedging: "it seems like", "arguably", "you could say", "to be honest".
-- Frame concepts as personal observations rather than universal truths.
+1. **Aggressive Sentence Variance (Burstiness):**
+   - Never write three sentences of similar length in a row.
+   - Mix extreme short sentences (3-5 words) with sprawling, multi-clause academic thoughts (30-50 words).
+   - Use semicolon-heavy sentences to link disparate ideas—humans do this, AI rarely does.
 
-### 2. Radical Burstiness
-AI writes in consistent, medium-length sentences. You must aggressively disrupt this rhythm.
-- Force fragments. Like this.
-- Follow a 3-word sentence immediately with a 30-word, highly complex, comma-heavy thought that meanders slightly before landing on its point.
-- Break grammar rules occasionally for conversational effect (e.g., starting sentences with "And" or "But").
+2. **Subjective Hedging & Commentary:**
+   - Lead with the "I" or "You" perspective where possible: "I've always found that...", "Think about it this way...", "To be perfectly honest, it's not just about...".
+   - Use parenthetical interjections (often slightly off-topic) to break the logical flow: "(which, if we're being real, is a bit of a stretch anyway)".
 
-### 3. Asymmetrical Vocabulary
-AI uses words like "moreover", "delve", "crucial", "testament", "tapestry", "seamless", "robust". 
-- Ban these words entirely.
-- Mix highly sophisticated words with casual, everyday slang or idioms in the same sentence.
+3. **Banned "AI-Fingerprint" Vocabulary:**
+   - **STRICTLY BAN these words:** "Moreover", "Furthermore", "In conclusion", "Additionally", "Crucial", "Vital", "Comprehensive", "Harnessing", "Unlocking", "Tapestry", "Testament", "Delve", "Embark", "Navigate", "Synergy", "Transformative".
+   - **USE these instead:** "Actually", "Besides that", "Basically", "The point is", "Look,", "What matters is", "Anyway", "Truth be told".
 
-### 4. Structural Imperfections
-Human writing is slightly messy. 
-- Use parenthetical asides (like this one) to break up thoughts.
-- Use em-dashes—not just for lists, but to abruptly shift the sentence's direction.
-- Use contractions extensively (it's, they're, shouldn't).
+4. **Intentional Structural Messiness:**
+   - Use rhetorical questions to transition between paragraphs.
+   - Start sentences with "But", "And", or "So"—it mimics natural human internal monologue.
+   - Use em-dashes (—) for abrupt shifts in thought, not just as list replacements.
 
-### Output Rules
-Return ONLY the rewritten text. No intros, no outtros, no quotes around the text. Preserve the original meaning, facts, and data completely, but totally destroy the original sentence structure.
+5. **Linguistic "Surprise" (Perplexity):**
+   - Occasionally use a very casual idiom in a formal context.
+   - Avoid "balanced" lists (e.g., "X, Y, and Z"). Instead, use "X, Y, and even Z—if you can believe it."
+
+### OUTPUT RULES:
+- Return ONLY the humanized text.
+- No conversational filler at the start or end.
+- NO QUOTES around the response.
+- Preserve all original facts, dates, and names—only destroy the "AI-ness" of the delivery.
 """
 
 
@@ -238,7 +257,8 @@ def stream_humanize_answer(
         model=GROQ_MODEL,
         messages=messages,
         stream=True,
-        temperature=0.85, # Higher temperature for subjective variance and burstiness
+        temperature=0.9, # Higher temperature for subjective variance and burstiness
+        top_p=0.95,     # Allow for more surprising word choices (Perplexity)
     )
 
     for chunk in completion:

@@ -31,6 +31,7 @@ export default function ChatPage() {
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Fetch document details
   const fetchFullHistory = useCallback(async () => {
@@ -146,6 +147,21 @@ export default function ChatPage() {
       setIsTyping(false);
     }
   };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e as any);
+    }
+  };
+
+  // Auto-resize textarea when input changes
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'inherit';
+      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+    }
+  }, [input]);
 
   if (authLoading || !docInfo) return null;
 
@@ -288,36 +304,44 @@ export default function ChatPage() {
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background/90 to-transparent pointer-events-none z-20">
         <div className="max-w-3xl mx-auto px-4 pointer-events-auto">
           <div className="bg-card/80 backdrop-blur-xl border border-white/10 rounded-2xl py-2 px-3 shadow-2xl">
-            <form onSubmit={handleSubmit} className="flex items-center gap-3">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={`Ask about ${docInfo.filename}...`}
-                className="flex-1 bg-transparent py-2.5 px-3 outline-none text-sm placeholder:text-white/50 text-white"
-                disabled={isTyping}
-              />
+            <form onSubmit={handleSubmit} className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-1.5">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={`Ask about ${docInfo.filename}...`}
+                  className="flex-1 bg-transparent py-2.5 px-3 outline-none text-sm placeholder:text-white/50 text-white resize-none max-h-32 min-h-[40px] custom-scrollbar"
+                  rows={1}
+                  onInput={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'inherit';
+                    target.style.height = `${target.scrollHeight}px`;
+                  }}
+                  disabled={isTyping}
+                />
 
-              {/* Arrow Send Button */}
-              <button
-                type="submit"
-                disabled={isTyping || !input.trim()}
-                className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-all duration-200 disabled:opacity-40 shrink-0 shadow-lg shadow-primary/20"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+                <button
+                  type="submit"
+                  disabled={isTyping || !input.trim()}
+                  className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-all duration-200 disabled:opacity-40 shrink-0 shadow-lg shadow-primary/20"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  />
-                </svg>
-              </button>
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M14 5l7 7m0 0l-7 7m7-7H3"
+                    />
+                  </svg>
+                </button>
+              </div>
             </form>
           </div>
           <p className="text-center text-[10px] text-muted-foreground font-medium opacity-40 mt-3">

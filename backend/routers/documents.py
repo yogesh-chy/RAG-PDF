@@ -120,15 +120,33 @@ async def extract_document_text(
     file: UploadFile = File(...),
     current_user: models.User = Depends(get_current_user),
 ):
-    """Extract text from a PDF and return it as a string. Used for humanization."""
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported")
-
-    pdf_bytes = await file.read()
-    pages, _ = extract_pages(pdf_bytes)
+    """Extract text from a PDF or Word document and return it as a string. Used for humanization."""
+    filename = file.filename.lower() if file.filename else ""
     
-    full_text = "\n\n".join(text for _, text in pages)
-    return {"text": full_text}
+    if not (filename.endswith(".pdf") or filename.endswith(".docx")):
+        raise HTTPException(status_code=400, detail="Only PDF and Word (.docx) files are supported")
+
+    file_bytes = await file.read()
+    try:
+        if filename.endswith(".pdf"):
+            from embeddings import extract_pages
+            pages, _ = extract_pages(file_bytes)
+            full_text = "\n\n".join(text for _, text in pages)
+        else:
+            from embeddings import extract_docx
+            full_text = extract_docx(file_bytes)
+        
+        if not full_text.strip():
+            raise HTTPException(
+                status_code=400, 
+                detail="No text could be extracted from this document. It might be empty or image-only."
+            )
+            
+        return {"text": full_text}
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
 
 @router.get("/", response_model=List[schemas.DocumentResponse])

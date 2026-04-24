@@ -89,15 +89,18 @@ export default function HumanizePage() {
     }
   }, [messages, isTyping]);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent, overrideText?: string) => {
     if (e) e.preventDefault();
-    if (!input.trim() || isTyping) return;
+    const userMessage = (overrideText || input).trim();
+    if (!userMessage || isTyping) return;
 
-    const userMessage = input.trim();
-    setInput("");
-    if (inputRef.current) {
-      inputRef.current.style.height = 'inherit';
+    if (!overrideText) {
+      setInput("");
+      if (inputRef.current) {
+        inputRef.current.style.height = 'inherit';
+      }
     }
+    
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsTyping(true);
 
@@ -175,10 +178,18 @@ export default function HumanizePage() {
     }
   };
 
+  // Auto-resize textarea when input changes
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'inherit';
+      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+    }
+  }, [input]);
+
   if (authLoading) return null;
 
   return (
-    <div className="flex flex-1 bg-background overflow-hidden font-sans flex-col relative h-full">
+    <div className="flex h-screen bg-background overflow-hidden font-sans flex-col relative">
       {/* Header */}
       <header className="h-14 shrink-0 border-b border-white/10 bg-card/30 backdrop-blur-md flex items-center px-6 justify-between z-10">
         <div className="flex items-center gap-3">
@@ -209,7 +220,7 @@ export default function HumanizePage() {
             </button>
           )}
         </div>
-        <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold opacity-40 hidden md:block">Powered by Groq · LLaMA 3</div>
+        <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold opacity-40 hidden md:block">AI Humanizer · Bypass Detection</div>
       </header>
 
       {/* Messages */}
@@ -297,15 +308,15 @@ export default function HumanizePage() {
         </div>
       </div>
 
-      {/* Synchronized Floating Input Area */}
-      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background/90 to-transparent pointer-events-none z-20">        <div className="max-w-3xl mx-auto px-4 pointer-events-auto">
-          <div className="bg-card/80 backdrop-blur-xl border border-white/10 rounded-2xl py-2 px-3 shadow-2xl relative">
+      {/* Floating Input Area */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background/90 to-transparent pointer-events-none z-20">
+        <div className="max-w-3xl mx-auto px-4 pointer-events-auto">
+          <div className="bg-card/80 backdrop-blur-xl border border-white/10 rounded-2xl py-2 px-3 shadow-2xl">
             <form
               onSubmit={handleSubmit}
               className="flex flex-col gap-0.5"
             >
               <div className="flex items-center gap-1.5">
-                {/* File Upload Button - Integrated */}
                 <input
                   type="file"
                   id="humanize-file-upload"
@@ -315,10 +326,15 @@ export default function HumanizePage() {
                     const file = e.target.files?.[0];
                     if (!file) return;
                     
-                    if (file.type === "text/plain") {
+                    const fileName = file.name.toLowerCase();
+                    const isTxt = file.type === "text/plain" || fileName.endsWith(".txt");
+                    const isPdf = file.type === "application/pdf" || fileName.endsWith(".pdf");
+                    const isDocx = file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || fileName.endsWith(".docx");
+
+                    if (isTxt) {
                       const text = await file.text();
                       setInput(text);
-                    } else if (file.type === "application/pdf") {
+                    } else if (isPdf || isDocx) {
                       const formData = new FormData();
                       formData.append("file", file);
                       try {
@@ -332,15 +348,16 @@ export default function HumanizePage() {
                           const data = await res.json();
                           setInput(data.text);
                         } else {
-                          alert("Failed to extract PDF text.");
+                          const error = await res.json();
+                          alert(error.detail || `Failed to extract ${isPdf ? 'PDF' : 'Word'} text.`);
                         }
                       } catch (err) {
-                        alert("Error uploading PDF.");
+                        alert(`Error uploading ${isPdf ? 'PDF' : 'Word'} file.`);
                       } finally {
                         setIsTyping(false);
                       }
                     } else {
-                      alert("Supporting .txt and .pdf files.");
+                      alert("Supporting .txt, .pdf, and .docx files.");
                     }
                   }}
                 />
@@ -359,13 +376,19 @@ export default function HumanizePage() {
                   ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Paste AI text to humanize (up to 100k words)..."
-                  className="flex-1 bg-transparent py-2.5 outline-none text-sm placeholder:text-white/50 text-white resize-none max-h-32 min-h-[40px] custom-scrollbar"
+                  placeholder="Paste AI text to humanize..."
+                  className="flex-1 bg-transparent py-2.5 outline-none text-sm placeholder:text-white/50 text-white resize-none max-h-32 min-h-[40px] custom-scrollbar px-1"
                   rows={1}
                   onInput={(e) => {
                     const target = e.target as HTMLTextAreaElement;
                     target.style.height = 'inherit';
                     target.style.height = `${target.scrollHeight}px`;
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit();
+                    }
                   }}
                   disabled={isTyping}
                 />
@@ -373,7 +396,7 @@ export default function HumanizePage() {
                 <button
                   type="submit"
                   disabled={isTyping || !input.trim()}
-                  className="w-10 h-10 rounded-xl bg-accent text-black flex items-center justify-center hover:bg-accent/90 transition-all duration-200 disabled:opacity-40 shrink-0 shadow-lg shadow-accent/20"
+                  className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-all duration-200 disabled:opacity-40 shrink-0 shadow-lg shadow-primary/20"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
