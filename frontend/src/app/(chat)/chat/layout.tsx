@@ -20,6 +20,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [notification, setNotification] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const fetchDocuments = useCallback(async () => {
     try {
@@ -70,9 +71,20 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   if (authLoading) return null;
 
   return (
-    <div className="flex h-[100vh] overflow-hidden bg-background text-foreground font-sans">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground font-sans relative">
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden animate-in fade-in duration-300"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="w-64 border-r border-white/10 flex flex-col bg-card/40 backdrop-blur-xl shrink-0">
+      <div className={`
+        fixed inset-y-0 left-0 z-50 w-64 border-r border-white/10 flex flex-col bg-card/40 backdrop-blur-xl transition-transform duration-300 lg:static lg:translate-x-0 shrink-0
+        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+      `}>
         <div className="h-14 flex items-center px-4 border-b border-white/10 shrink-0">
           <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -85,6 +97,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         <div className="p-4 shrink-0">
           <Link
             href="/chat"
+            onClick={() => setIsSidebarOpen(false)}
             className="w-full py-2.5 px-4 rounded-xl bg-primary text-white flex items-center gap-2 hover:bg-primary/90 transition-all font-semibold text-sm shadow-lg shadow-primary/20 justify-center group"
           >
             <svg className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -105,6 +118,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 <Link
                   key={doc.id}
                   href={`/chat/${doc.id}`}
+                  onClick={() => setIsSidebarOpen(false)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm group ${
                     isActive
                       ? "bg-primary/20 text-primary font-semibold"
@@ -142,7 +156,22 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-background relative z-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-background relative z-0 h-full">
+        {/* Mobile Header Toggle */}
+        <div className="lg:hidden h-14 flex items-center px-4 border-b border-white/10 shrink-0 bg-card/20 backdrop-blur-md">
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 -ml-2 rounded-lg hover:bg-white/5 text-muted-foreground transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <div className="ml-3">
+            <Logo />
+          </div>
+        </div>
+
         {notification && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-green-500 text-xs font-bold shadow-lg shadow-green-500/10 animate-in fade-in slide-in-from-top-2 duration-300">
             {notification}

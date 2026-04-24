@@ -178,7 +178,7 @@ export default function HumanizePage() {
   if (authLoading) return null;
 
   return (
-    <div className="flex h-[100vh] bg-background overflow-hidden font-sans flex-col relative">
+    <div className="flex flex-1 bg-background overflow-hidden font-sans flex-col relative h-full">
       {/* Header */}
       <header className="h-14 shrink-0 border-b border-white/10 bg-card/30 backdrop-blur-md flex items-center px-6 justify-between z-10">
         <div className="flex items-center gap-3">
@@ -189,12 +189,12 @@ export default function HumanizePage() {
             <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            <span className="text-sm font-semibold">Back to Library</span>
+            <span className="text-sm font-semibold hidden sm:inline">Back to Library</span>
           </Link>
           <div className="h-4 w-px bg-white/10" />
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-accent shrink-0" />
-            <span className="text-sm font-semibold truncate max-w-[300px]">AI Humanizer Chat</span>
+            <span className="text-sm font-semibold truncate max-w-[120px] sm:max-w-[300px]">Humanizer</span>
           </div>
           {messages.length > 0 && (
             <button
@@ -209,7 +209,7 @@ export default function HumanizePage() {
             </button>
           )}
         </div>
-        <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold opacity-40">Powered by Groq · LLaMA 3</div>
+        <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold opacity-40 hidden md:block">Powered by Groq · LLaMA 3</div>
       </header>
 
       {/* Messages */}

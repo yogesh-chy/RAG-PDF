@@ -150,18 +150,18 @@ export default function ChatPage() {
   if (authLoading || !docInfo) return null;
 
   return (
-    <div className="flex h-full bg-background overflow-hidden font-sans flex-col relative">
+    <div className="flex flex-1 bg-background overflow-hidden font-sans flex-col relative h-full">
       {/* Header */}
       <header className="h-14 shrink-0 border-b border-white/10 bg-card/30 backdrop-blur-md flex items-center px-6 justify-between z-10">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-            <span className="text-sm font-semibold truncate max-w-[300px]">
+            <span className="text-sm font-semibold truncate max-w-[150px] sm:max-w-[300px]">
               {docInfo.filename}
             </span>
           </div>
         </div>
-        <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold opacity-40">
+        <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold opacity-40 hidden md:block">
           Powered by Groq · LLaMA 3
         </div>
       </header>

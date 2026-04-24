@@ -19,15 +19,15 @@ export default function DashboardPage() {
           <Logo />
           {user && (
             <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center h-8 px-3 rounded-full border border-white/10 bg-white/5 backdrop-blur-md shadow-sm text-[11px] text-muted-foreground">
-                Welcome,&nbsp;<span className="text-foreground font-semibold tracking-wide">@{user.username}</span>
+              <div className="flex items-center h-8 px-3 rounded-full border border-white/10 bg-white/5 backdrop-blur-md shadow-sm text-[11px] text-muted-foreground">
+                <span className="hidden sm:inline">Welcome,&nbsp;</span><span className="text-foreground font-semibold tracking-wide">@{user.username}</span>
               </div>
               
               <button
                 onClick={logout}
                 className="group flex items-center h-8 px-3 gap-1 rounded-full border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 hover:border-rose-500/30 text-rose-400 hover:text-rose-300 transition-all cursor-pointer shadow-sm"
               >
-                <span className="text-[10px] font-bold uppercase tracking-wider">Sign Out</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Sign Out</span>
                 <svg className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
