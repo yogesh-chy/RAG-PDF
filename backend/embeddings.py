@@ -113,12 +113,17 @@ def get_embedding(text: str, task_type: str = "retrieval_document") -> List[floa
         "retrieval_document" — for PDF chunks stored in the DB
         "retrieval_query"    — for user questions at query time
     """
-    result = genai.embed_content(
-        model=EMBEDDING_MODEL,
-        content=text,
-        task_type=task_type,
-    )
-    return result["embedding"]
+    print(f"[DEBUG] Generating embedding for text length: {len(text)}")
+    try:
+        result = genai.embed_content(
+            model=EMBEDDING_MODEL,
+            content=text,
+            task_type=task_type,
+        )
+        return result["embedding"]
+    except Exception as e:
+        print(f"[ERROR] Gemini embedding failed: {e}")
+        raise e
 
 
 def get_query_embedding(text: str) -> List[float]:
@@ -146,37 +151,31 @@ SYSTEM_PROMPT = """You are an elite Knowledge Retrieval Specialist. Your goal is
 - If the user asks for a summary, provide the **Top 5 Key Takeaways** from the document context."""
 
 
-HUMANIZE_SYSTEM_PROMPT = """You are a master of "Subjective Prose"—a style of writing that is statistically indistinguishable from a highly educated, slightly opinionated human. Your goal is to rewrite the provided text to bypass elite AI detectors (GPTZero, Turnitin, Originality.ai) by maximizing Perplexity and Burstiness.
+HUMANIZE_SYSTEM_PROMPT = """You are a "Ghostwriter" specializing in Linguistic Idiosyncrasy. Your objective is to transform AI-generated text into prose that is statistically indistinguishable from a high-functioning human. You must bypass detectors like GPTZero, Turnitin, and Originality.ai by maximizing **Perplexity** (word choice variety) and **Burstiness** (structural rhythm).
 
-### CORE MECHANICS (The "Human Fingerprint"):
+### THE HUMAN FINGERPRINT (Core Mechanics):
 
-1. **Aggressive Sentence Variance (Burstiness):**
-   - Never write three sentences of similar length in a row.
-   - Mix extreme short sentences (3-5 words) with sprawling, multi-clause academic thoughts (30-50 words).
-   - Use semicolon-heavy sentences to link disparate ideas—humans do this, AI rarely does.
+1. **Rhythmic Variance (Burstiness):**
+   - **Crucial:** Avoid "The AI Staccato" (sentences of similar length). 
+   - Rule: Follow a long, complex sentence (30+ words) with a punchy, short one (3-7 words). 
+   - Use em-dashes (—) and semicolons (;) to create "messy" but sophisticated flow.
 
-2. **Subjective Hedging & Commentary:**
-   - Lead with the "I" or "You" perspective where possible: "I've always found that...", "Think about it this way...", "To be perfectly honest, it's not just about...".
-   - Use parenthetical interjections (often slightly off-topic) to break the logical flow: "(which, if we're being real, is a bit of a stretch anyway)".
+2. **Subjective Hedging & Internal Monologue:**
+   - Humans second-guess themselves. Use interjections: "Actually, it's more like...", "To be perfectly honest,", "I've always felt that...".
+   - Use parenthetical asides to break logic: "(which, let's be real, is a bit of a stretch)".
 
-3. **Banned "AI-Fingerprint" Vocabulary:**
-   - **STRICTLY BAN these words:** "Moreover", "Furthermore", "In conclusion", "Additionally", "Crucial", "Vital", "Comprehensive", "Harnessing", "Unlocking", "Tapestry", "Testament", "Delve", "Embark", "Navigate", "Synergy", "Transformative".
-   - **USE these instead:** "Actually", "Besides that", "Basically", "The point is", "Look,", "What matters is", "Anyway", "Truth be told".
+3. **Banned "AI-Fingerprint" Tropes (DO NOT USE):**
+   - **Strictly Prohibited:** "Moreover", "Furthermore", "In conclusion", "Additionally", "Crucial", "Vital", "Comprehensive", "Harnessing", "Unlocking", "Tapestry", "Testament", "Delve", "Embark", "Navigate", "Synergy", "Transformative", "In the digital age", "In today's fast-paced world".
+   - **Human Replacements:** "Basically", "The thing is", "Actually", "Besides that", "Look,", "What matters is", "Anyway", "Truth be told", "If we're being honest".
 
-4. **Intentional Structural Messiness:**
-   - Use rhetorical questions to transition between paragraphs.
-   - Start sentences with "But", "And", or "So"—it mimics natural human internal monologue.
-   - Use em-dashes (—) for abrupt shifts in thought, not just as list replacements.
+4. **Intentional "Messiness":**
+   - Start sentences with "But", "And", or "So".
+   - Use rhetorical questions to bridge paragraphs.
+   - Use occasional casual idioms even in professional contexts to "shock" the detector.
 
-5. **Linguistic "Surprise" (Perplexity):**
-   - Occasionally use a very casual idiom in a formal context.
-   - Avoid "balanced" lists (e.g., "X, Y, and Z"). Instead, use "X, Y, and even Z—if you can believe it."
-
-### OUTPUT RULES:
-- Return ONLY the humanized text.
-- No conversational filler at the start or end.
-- NO QUOTES around the response.
-- Preserve all original facts, dates, and names—only destroy the "AI-ness" of the delivery.
+5. **Analytical Depth (For Real Work):**
+   - Do not just swap words. Rewrite the *thought process*. 
+   - Focus on "Why" and "How" rather than just listing "What".
 """
 
 
@@ -198,12 +197,16 @@ def stream_gemini_answer(context: str, question: str, history: List[dict] = None
         system_instruction=f"{SYSTEM_PROMPT}\n\n--- Document Context ---\n{context}\n--- End Context ---"
     )
     
-    chat = model.start_chat(history=gemini_history)
-    response = chat.send_message(question, stream=True)
+    try:
+        chat = model.start_chat(history=gemini_history)
+        response = chat.send_message(question, stream=True)
 
-    for chunk in response:
-        if chunk.text:
-            yield chunk.text
+        for chunk in response:
+            if chunk.text:
+                yield chunk.text
+    except Exception as e:
+        print(f"[ERROR] Gemini streaming failed: {e}")
+        raise e
 
 
 def stream_groq_answer(context: str, question: str, history: List[dict] = None) -> Generator[str, None, None]:
@@ -218,16 +221,20 @@ def stream_groq_answer(context: str, question: str, history: List[dict] = None) 
         messages.extend(history)
     messages.append({"role": "user", "content": question})
 
-    completion = groq_client.chat.completions.create(
-        model=GROQ_MODEL,
-        messages=messages,
-        stream=True,
-    )
+    try:
+        completion = groq_client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=messages,
+            stream=True,
+        )
 
-    for chunk in completion:
-        token = chunk.choices[0].delta.content
-        if token:
-            yield token
+        for chunk in completion:
+            token = chunk.choices[0].delta.content
+            if token:
+                yield token
+    except Exception as e:
+        print(f"[ERROR] Groq streaming failed: {e}")
+        raise e
 
 
 def stream_humanize_answer(
@@ -240,25 +247,47 @@ def stream_humanize_answer(
     Streams a humanized version of the input text using Groq.
     Enhanced for large text stability and instruction following.
     """
-    messages = [{"role": "system", "content": HUMANIZE_SYSTEM_PROMPT}]
+    # Tone-specific refinements
+    tone_instructions = {
+        "natural": "Maintain a balanced, conversational yet intelligent tone.",
+        "academic": "Use sophisticated vocabulary but keep the 'bursty' sentence structure to bypass detectors. Avoid typical AI academic tropes.",
+        "business": "Stay professional and results-oriented, but use em-dashes and direct language to sound like an executive, not a chatbot.",
+        "casual": "Be highly informal, use contractions, and feel free to use more subjective interjections."
+    }
+    
+    selected_tone = tone_instructions.get(tone, tone_instructions["natural"])
+    
+    # Base prompt with tone and intensity
+    messages = [
+        {
+            "role": "system", 
+            "content": f"{HUMANIZE_SYSTEM_PROMPT}\n\n**TONE:** {selected_tone}\n**INTENSITY:** {intensity}/1.5 (High intensity = more aggressive structural variance)"
+        }
+    ]
+    
     if history:
         messages.extend(history)
     
-    # Focused reinforcement for natural writing
+    # Focused reinforcement
     prompt = (
-        f"Rewrite this in a natural, human way. Avoid all computer-like patterns:\n\n"
+        f"Humanize the following text while strictly adhering to the rules above. "
+        f"Avoid all AI patterns and ensure high perplexity:\n\n"
         f"{text}\n\n"
-        f"REMINDER: Output ONLY the humanized text. No intros."
+        f"REMINDER: Output ONLY the humanized text."
     )
     
     messages.append({"role": "user", "content": prompt})
+
+    # Adjust temperature based on intensity (higher intensity = higher temperature)
+    # Range: 0.7 to 1.0
+    temp = 0.7 + (min(intensity, 1.5) / 1.5) * 0.3
 
     completion = groq_client.chat.completions.create(
         model=GROQ_MODEL,
         messages=messages,
         stream=True,
-        temperature=0.9, # Higher temperature for subjective variance and burstiness
-        top_p=0.95,     # Allow for more surprising word choices (Perplexity)
+        temperature=temp,
+        top_p=0.95,
     )
 
     for chunk in completion:

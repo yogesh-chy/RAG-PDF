@@ -142,17 +142,24 @@ def ask_question(
             print(f"[Warning] Failed to fetch chat history: {e}")
 
         try:
+            # We use Groq by default for high-speed LLaMA 3 answers
+            print(f"[DEBUG] Starting Groq stream for session {session_id}")
             for token in stream_groq_answer(context, request.question, history=history):
                 full_response += token
                 yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
 
+            if not full_response:
+                print("[WARNING] Empty response from stream_groq_answer")
+                yield f"data: {json.dumps({'type': 'error', 'content': 'The AI returned an empty response. Please check your API keys or try again.'})}\n\n"
+                return
+
             # Send sources after the answer
             yield f"data: {json.dumps({'type': 'sources', 'sources': sources})}\n\n"
 
-            # Send session ID (so frontend knows which session was created/used)
+            # Send session ID
             yield f"data: {json.dumps({'type': 'session', 'session_id': session_id})}\n\n"
 
-            # Persist assistant message (create a fresh session for this)
+            # Persist assistant message
             save_db = SessionLocal()
             try:
                 asst_msg = models.ChatMessage(
@@ -169,6 +176,7 @@ def ask_question(
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
         except Exception as exc:
+            print(f"[ERROR] Chat streaming exception: {exc}")
             yield f"data: {json.dumps({'type': 'error', 'content': str(exc)})}\n\n"
 
     return StreamingResponse(
@@ -191,9 +199,9 @@ def calculate_human_score(text: str) -> int:
     if not sentences:
         return 10
     
-    # 1. Burstiness (Human Signal)
+    # 1. Burstiness (Human Signal) - Reward high variance in sentence length
     lengths = [len(s.split()) for s in sentences]
-    if len(lengths) < 3: # Too short to judge = likely AI
+    if len(lengths) < 3: 
         variance = 0
     else:
         variance = statistics.variance(lengths)
@@ -202,16 +210,17 @@ def calculate_human_score(text: str) -> int:
     ai_markers = [
         'moreover', 'furthermore', 'additionally', 'in conclusion', 
         'consequently', 'therefore', 'notably', 'pivotal', 'delve',
-        'testament', 'comprehensive', 'unlock', 'harness', 'robust'
+        'testament', 'comprehensive', 'unlock', 'harness', 'robust',
+        'navigate', 'synergy', 'transformative', 'digital age', 'fast-paced'
     ]
     marker_count = sum(1 for word in ai_markers if word in text.lower())
     
-    # 3. Base Score + Calculations
-    # AI models usually have variance under 20. 
-    burstiness_score = min(40, (variance ** 0.5) * 5)
+    # 3. Calculation
+    # High variance (> 50) is very human. Low variance (< 10) is very AI.
+    burstiness_score = min(50, (variance ** 0.5) * 6)
     
-    base_score = 15 # Start very low
-    score = int(base_score + burstiness_score - (marker_count * 15))
+    base_score = 20
+    score = int(base_score + burstiness_score - (marker_count * 12))
     
     # Final capping
     score = min(99, max(1, score))

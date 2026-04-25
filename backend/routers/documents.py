@@ -30,6 +30,8 @@ def _process_pdf(doc_id: int, pdf_bytes: bytes) -> None:
         if not doc:
             return
 
+        print(f"[DEBUG] Starting background processing for PDF: {doc.filename} (ID: {doc_id})")
+
         # Step 1: Extract pages
         pages, page_count = extract_pages(pdf_bytes)
         doc.page_count = page_count
@@ -54,6 +56,7 @@ def _process_pdf(doc_id: int, pdf_bytes: bytes) -> None:
             data.append({"vector": embedding, "doc_id": doc_id, "user_id": doc.user_id, "chunk_id": db_chunk.id})
 
         if data:
+            print(f"[DEBUG] Storing {len(data)} chunks in LanceDB for doc {doc_id}")
             if "pdf_chunks" in db_lancedb.table_names():
                 tbl = db_lancedb.open_table("pdf_chunks")
                 tbl.add(data)
@@ -63,6 +66,7 @@ def _process_pdf(doc_id: int, pdf_bytes: bytes) -> None:
         db.commit()
 
         # Step 4: Mark document as ready
+        print(f"[SUCCESS] PDF {doc_id} processed successfully.")
         doc.status = "ready"
         db.commit()
 

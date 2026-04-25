@@ -125,6 +125,13 @@ export default function ChatPage() {
                     assistantContent;
                   return newMessages;
                 });
+              } else if (data.type === "error") {
+                setMessages((prev) => {
+                  const newMessages = [...prev];
+                  newMessages[newMessages.length - 1].content = 
+                    `Error: ${data.content}`;
+                  return newMessages;
+                });
               } else if (data.type === "session") {
                 setActiveSessionId(data.session_id);
               }

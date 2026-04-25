@@ -19,7 +19,10 @@ ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
 )
 
 # CORS
-ALLOWED_ORIGINS: list = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+ALLOWED_ORIGINS: list = os.getenv(
+    "ALLOWED_ORIGINS", 
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
+).split(",")
 
 # SMTP Config
 SMTP_HOST: str = os.getenv("EMAIL_HOST", "smtp.gmail.com")
@@ -33,7 +36,7 @@ EMBEDDING_MODEL = "models/gemini-embedding-001"
 EMBEDDING_DIMENSIONS = 768
 
 # Chat models
-CHAT_MODEL = "models/gemini-flash-latest"
+CHAT_MODEL = "models/gemini-1.5-flash"
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 # Chunking strategy
